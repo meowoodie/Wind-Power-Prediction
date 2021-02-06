@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Read sample data and convert the raw csv data to a numpy matrix
+Read preprocessed wind numpy matrix and convert it to a directed graph
 """
 
 import csv
