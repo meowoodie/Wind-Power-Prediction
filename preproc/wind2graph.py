@@ -160,6 +160,7 @@ if __name__ == "__main__":
     
     # graph support
     supp = k_nearest_graph_support(locs, k=100)
+    np.save("../data/gsupp.npy", supp)
 
     # temporal dynamic graph: 
     # at time t, a unique directed graph is decided by the wind directions, 
@@ -170,7 +171,6 @@ if __name__ == "__main__":
             angle = abs(wind[t, j, 0] - rpos[j, i])
             if angle <= 15 or 360 - angle <= 15:
                 dgraph[t, j, i] = 1
-
     np.save("../data/dgraph.npy", dgraph)
 
     # plot dynamic graphs on the map
