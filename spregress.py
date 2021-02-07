@@ -44,6 +44,7 @@ def train(model, niter=1000, lr=1e-1, log_interval=50):
                     _iter / log_interval, 
                     sum(losses) / len(losses)))
                 losses = []
+                torch.save(model.state_dict(), "saved_models/in-sample.pt")
         except KeyboardInterrupt:
             break
 
@@ -97,8 +98,8 @@ class SpatioTemporalRegressor(torch.nn.Module):
         self.speeds = torch.transpose(self.speeds, 0, 1)                      # [ K, T ] transpose
         self.dgraph = torch.Tensor(dgraph)
         # parameters
-        self.Mu    = torch.nn.Parameter(torch.Tensor(self.K).uniform_(0, 10)) # [ K ]
-        self.Beta  = torch.nn.Parameter(torch.Tensor(self.K).uniform_(1, 3))  # [ K ]
+        self.base   = self.speeds.mean(1) / 10 + torch.nn.Parameter(torch.Tensor(self.K).uniform_(0, 1)) # [ K ]
+        self.Beta   = torch.nn.Parameter(torch.Tensor(self.K).uniform_(1, 3))  # [ K ]
 
         # non-zero entries of alpha (spatio dependences)
         n_nonzero          = len(np.where(gsupp == 1)[0])
@@ -108,11 +109,11 @@ class SpatioTemporalRegressor(torch.nn.Module):
         self.Alpha         = torch.sparse.FloatTensor(coords, 
             self.Alpha_nonzero, torch.Size([self.K, self.K])).to_dense()      # [ K, K ]
     
-    def _mu(self, _t):
+    def _base(self, _t):
         """
         Background rate at time `t`
         """
-        return self.Mu
+        return self.base
 
     def _pred(self, _t):
         """
@@ -149,7 +150,7 @@ class SpatioTemporalRegressor(torch.nn.Module):
         - lams:   a list of historical conditional intensity values at time t = tau, ..., t
         """
         # pred values from 0 to T
-        pred0 = [ self._mu(t) for t in np.arange(self.T) ]     # ( T, [ K ] )
+        pred0 = [ self._base(t) for t in np.arange(self.T) ]   # ( T, [ K ] )
         pred1 = [ self._pred(t) for t in np.arange(self.T) ]   # ( T, [ K ] )
         pred0 = torch.stack(pred0, dim=1)                      # [ K, T ]
         pred1 = torch.stack(pred1, dim=1)                      # [ K, T ]
@@ -180,17 +181,18 @@ class SpatioTemporalRegressor(torch.nn.Module):
 
 if __name__ == "__main__":
     
-    # torch.manual_seed(2)
+    torch.manual_seed(12)
 
     # load data
     dgraph = np.load("../data/dgraph.npy")
     wind   = np.load("../data/sample_wind.npy")
     gsupp  = np.load("../data/gsupp.npy")
     speeds = wind[:, :, 1]
+    # speeds[speeds > 15] == speeds.mean()
     print(speeds.shape, dgraph.shape, gsupp.shape)
 
     # training
     model = SpatioTemporalRegressor(speeds, dgraph, gsupp)
-    train(model, niter=1000, lr=1e-2, log_interval=1)
+    train(model, niter=1000, lr=1e-6, log_interval=2)
     print("[%s] saving model..." % arrow.now())
-    torch.save(model.state_dict(), "saved_models/in-sample.pt")
+    # torch.save(model.state_dict(), "saved_models/in-sample.pt")

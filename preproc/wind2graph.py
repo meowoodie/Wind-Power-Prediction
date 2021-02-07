@@ -82,7 +82,7 @@ def plot_wind_graph(t, locs, edges, latlim, lnglim, filename):
     plt.xlim(lnglim)
     plt.axis("off")
     fig.tight_layout()
-    plt.savefig("../results/plot_graph/%s.png" % filename)
+    plt.savefig("../results/plot_graph/%s-45.png" % filename)
 
 def plot_dynamic_graphs(locs, dgraph):
     """
@@ -169,11 +169,11 @@ if __name__ == "__main__":
     for t in tqdm(range(n_time)):
         for j, i in zip(*np.nonzero(supp)):
             angle = abs(wind[t, j, 0] - rpos[j, i])
-            if angle <= 15 or 360 - angle <= 15:
+            if angle <= 22.5 or 360 - angle <= 22.5:
                 dgraph[t, j, i] = 1
     np.save("../data/dgraph.npy", dgraph)
 
-    # plot dynamic graphs on the map
+    # # plot dynamic graphs on the map
     plot_dynamic_graphs(locs, dgraph)
 
     # # generate gif
