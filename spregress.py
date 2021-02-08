@@ -126,8 +126,11 @@ class SpatioTemporalRegressor(torch.nn.Module):
             depth  = self.d if _t >= self.d else _t
             graph  = self.dgraph[_t-depth:_t, :, :].clone()                           # [ d, K, K ]
             A      = self.Alpha.unsqueeze(0).repeat(depth, 1, 1) * graph              # [ d, K, K ]
-            kernel = self.__exp_kernel(self.Beta, _t, depth, self.K)                  # [ K, d ]
-            kernel = torch.transpose(kernel, 0, 1).unsqueeze(-1).repeat(1, 1, self.K) # [ d, K, K ]
+
+            # kernel = self.__exp_kernel(self.Beta, _t, depth, self.K)                  # [ K, d ]
+            # kernel = torch.transpose(kernel, 0, 1).unsqueeze(-1).repeat(1, 1, self.K) # [ d, K, K ]
+            kernel = self.__exp_kernel(self.Beta, _t, depth, self.K)                  # [ d, K, K ]
+
             Xt     = self.speeds[:, _t-depth:_t].clone()                              # [ K, d ]
             Xt     = torch.transpose(Xt, 0, 1).unsqueeze(-1).repeat(1, 1, self.K)     # [ d, K, K ]
             pred   = (A * Xt * kernel).sum(0).sum(0)                                  # [ K ]
@@ -175,12 +178,20 @@ class SpatioTemporalRegressor(torch.nn.Module):
         - _t:    time index    scalar
         - depth: time depth    scalar
         """
+        # # current time and the past 
+        # t       = torch.ones(depth, dtype=torch.int32) * _t # [ d ]
+        # tp      = torch.arange(_t-depth, _t)                # [ d ]
+        # delta_t = t - tp                                    # [ d ]
+        # delta_t = delta_t.unsqueeze(0).repeat([K, 1])       # [ K, d ]
+        # beta    = beta.unsqueeze(1)                         # [ K, 1 ]
+        # return beta * torch.exp(- delta_t * beta)
+
         # current time and the past 
-        t       = torch.ones(depth, dtype=torch.int32) * _t # [ d ]
-        tp      = torch.arange(_t-depth, _t)                # [ d ]
-        delta_t = t - tp                                    # [ d ]
-        delta_t = delta_t.unsqueeze(0).repeat([K, 1])       # [ K, d ]
-        beta    = beta.unsqueeze(1)                         # [ K, 1 ]
+        t       = torch.ones(depth, dtype=torch.int32) * _t             # [ d ]
+        tp      = torch.arange(_t-depth, _t)                            # [ d ]
+        delta_t = t - tp                                                # [ d ]
+        delta_t = delta_t.unsqueeze(-1).unsqueeze(-1).repeat([1, K, K]) # [ d, K, K ]
+        beta    = beta.unsqueeze(1)                                     # [ K ]
         return beta * torch.exp(- delta_t * beta)
         
 
@@ -248,8 +259,7 @@ class SpatioTemporalDelayedRegressor(SpatioTemporalRegressor):
             graph  = self.dgraph[_t-depth:_t, :, :].clone()                           # [ d, K, K ]
             A      = self.Alpha.unsqueeze(0).repeat(depth, 1, 1) * graph              # [ d, K, K ]
             mu     = self.muG[_t-depth:_t, :, :].clone()                              # [ d, K, K ]
-            # kernel = self.__exp_kernel(self.Beta, _t, depth, self.K)                  # [ K, d ]
-            # kernel = torch.transpose(kernel, 0, 1).unsqueeze(-1).repeat(1, 1, self.K) # [ d, K, K ]
+            kernel = self.__trunc_gaussian_kernel(mu, self.Sigma, _t, depth, self.K)  # [ d, K, K ]
             Xt     = self.speeds[:, _t-depth:_t].clone()                              # [ K, d ]
             Xt     = torch.transpose(Xt, 0, 1).unsqueeze(-1).repeat(1, 1, self.K)     # [ d, K, K ]
             pred   = (A * Xt * kernel).sum(0).sum(0)                                  # [ K ]
@@ -259,7 +269,7 @@ class SpatioTemporalDelayedRegressor(SpatioTemporalRegressor):
         return pred
 
     @staticmethod
-    def __trunc_gaussian_kernel(t, tau, mu_mat, sigma=20):
+    def __trunc_gaussian_kernel(Mu, Sigma, t, depth, K):
         """
         Args: 
         - t:      current time index              scalar
@@ -267,8 +277,14 @@ class SpatioTemporalDelayedRegressor(SpatioTemporalRegressor):
         - mu_mat: mean matrix for gaussian kernel [ K, K ]
         - sigma:  sigma for gaussian kernel
         """
-        return (1 / (np.sqrt(2 * np.pi) * sigma)) * \
-            torch.exp((-1/2) * torch.square((t - tau - mu_mat)/sigma))
+        # current time and the past 
+        t       = torch.ones(depth, dtype=torch.int32) * _t             # [ d ]
+        tp      = torch.arange(_t-depth, _t)                            # [ d ]
+        delta_t = t - tp                                                # [ d ]
+        delta_t = delta_t.unsqueeze(-1).unsqueeze(-1).repeat([1, K, K]) # [ d, K, K ]
+        Sigma   = Sigma.unsqueeze(0).repeat(depth, 1, 1)                # [ d, K, K ]
+        return (1 / (np.sqrt(2 * np.pi) * Sigma)) * \
+            torch.exp((-1/2) * torch.square((delta_t - Mu)/Sigma))
 
 
 
@@ -283,7 +299,7 @@ if __name__ == "__main__":
     # training
     model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
     model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel.pt"))
-    train(model, niter=1000, lr=1e0, log_interval=2, modelname="in-sample-exp-kernel")
+    train(model, niter=1000, lr=2e0, log_interval=2, modelname="in-sample-exp-kernel")
 
     # model = SpatioTemporalDelayedRegressor(speeds, dgraph, gsupp, muG=muG, d=20)
     # train(model, niter=1000, lr=5e1, log_interval=2, modelname="in-sample-gauss-kernel")

@@ -182,23 +182,23 @@ class SpatioTemporalRegressor(torch.nn.Module):
         beta    = beta.unsqueeze(1)                         # [ K, 1 ]
         return beta * torch.exp(- delta_t * beta)
 
-    @staticmethod
-    def __gauss_kernel(beta, _t, depth, K):
-        """
-        Args:
-        - beta:  decaying rate [ K ]
-        - _t:    time index    scalar
-        - depth: time depth    scalar
-        """
-        sigma   = 20
-        # current time and the past 
-        t       = torch.ones(depth, dtype=torch.int32) * _t # [ d ]
-        tp      = torch.arange(_t-depth, _t)                # [ d ]
-        delta_t = t - tp                                    # [ d ]
-        delta_t = delta_t.unsqueeze(0).repeat([K, 1])       # [ K, d ]
-        beta    = beta.unsqueeze(1)                         # [ K, 1 ]
-        return (1 / (np.sqrt(2 * np.pi) * sigma)) * \
-            torch.exp((-1/2) * torch.square((delta_t - beta)/sigma))
+    # @staticmethod
+    # def __gauss_kernel(beta, _t, depth, K):
+    #     """
+    #     Args:
+    #     - beta:  decaying rate [ K ]
+    #     - _t:    time index    scalar
+    #     - depth: time depth    scalar
+    #     """
+    #     sigma   = 20
+    #     # current time and the past 
+    #     t       = torch.ones(depth, dtype=torch.int32) * _t # [ d ]
+    #     tp      = torch.arange(_t-depth, _t)                # [ d ]
+    #     delta_t = t - tp                                    # [ d ]
+    #     delta_t = delta_t.unsqueeze(0).repeat([K, 1])       # [ K, d ]
+    #     beta    = beta.unsqueeze(1)                         # [ K, 1 ]
+    #     return (1 / (np.sqrt(2 * np.pi) * sigma)) * \
+    #         torch.exp((-1/2) * torch.square((delta_t - beta)/sigma))
 
 
 
