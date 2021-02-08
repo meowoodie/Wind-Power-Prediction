@@ -7,8 +7,8 @@ import utils
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from spregress_backup import SpatioTemporalRegressor
-# from spregress import SpatioTemporalRegressor, SpatioTemporalDelayedRegressor
+# from spregress_backup import SpatioTemporalRegressor
+from spregress import SpatioTemporalRegressor, SpatioTemporalDelayedRegressor
 
 def pred_linechart(data, true, filename):
 
@@ -43,12 +43,12 @@ if __name__ == "__main__":
     dgraph, speeds, gsupp, muG, _ = utils.dataloader(N=4)
 
     # load model
-    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
-    # model.load_state_dict(torch.load("saved_models/backup-in-sample-exp-kernel.pt"))
-    model.load_state_dict(torch.load("saved_models/backup-in-sample-gauss-kernel.pt"))
+    # model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
+    # # model.load_state_dict(torch.load("saved_models/backup-in-sample-exp-kernel.pt"))
+    # model.load_state_dict(torch.load("saved_models/backup-in-sample-gauss-kernel.pt"))
 
-    # model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=20)
-    # model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel.pt"))
+    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
+    model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel.pt"))
 
     model.eval()
     loss, pred0, pred1 = model() 
