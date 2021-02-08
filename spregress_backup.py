@@ -15,7 +15,7 @@ from scipy.stats import norm
 
 
 
-def train(model, niter=1000, lr=1e-1, log_interval=50, modelname="in-sample"):
+def train(model, niter=1000, lr=1e-1, log_interval=50):
     """training procedure for one epoch"""
     # define model clipper to enforce inequality constraints
     clipper = NonNegativeClipper()  
@@ -27,8 +27,8 @@ def train(model, niter=1000, lr=1e-1, log_interval=50, modelname="in-sample"):
 
     # NOTE: gradient for loss is expected to be None, 
     #       since it is not leaf node. (it's root node)
-    losses     = []
-    optimizer  = optim.SGD(model.parameters(), lr=lr, momentum=0.99)
+    losses    = []
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.99)
     for _iter in range(niter):
         try:
             model.train()
@@ -37,16 +37,16 @@ def train(model, niter=1000, lr=1e-1, log_interval=50, modelname="in-sample"):
             # objective function
             loss.backward(retain_graph=True) # gradient descent
             optimizer.step()                 # update optimizer
-            print(model.Alpha)
             # model.apply(clipper)
             # log training output
             losses.append(loss.item())
             if _iter % log_interval == 0 and _iter != 0:
-                print("[%s] Train epoch: %d\tLoss: %.3e" % (arrow.now(), 
+                print("[%s] Train batch: %d\tLoss: %.3e" % (arrow.now(), 
                     _iter / log_interval, 
                     sum(losses) / len(losses)))
                 losses = []
-                torch.save(model.state_dict(), "saved_models/%s.pt" % modelname)
+                torch.save(model.state_dict(), "saved_models/backup-in-sample-exp-kernel.pt")
+                # torch.save(model.state_dict(), "saved_models/backup-in-sample-gauss-kernel.pt")
         except KeyboardInterrupt:
             break
 
@@ -79,7 +79,7 @@ class NonNegativeClipper(object):
 
 class SpatioTemporalRegressor(torch.nn.Module):
     """
-    PyTorch module for spatio-temporal regressive model for wind power prediction
+    PyTorch Module for Spatio-temporal regressive model for wind power prediction
     """
 
     def __init__(self, speeds, dgraph, gsupp, d=20):
@@ -89,7 +89,6 @@ class SpatioTemporalRegressor(torch.nn.Module):
         - speeds: wind speed observations [ T, K ]
         - dgraph: dynamic graph           [ T, K, K ]
         - gsupp:  graph support           [ K, K ]
-        - muG:    mean of gaussian kernel [ T, K, K ]
         - d:      memory depth            scalar
         """
         torch.nn.Module.__init__(self) 
@@ -101,14 +100,14 @@ class SpatioTemporalRegressor(torch.nn.Module):
         self.speeds = torch.transpose(self.speeds, 0, 1)                      # [ K, T ] transpose
         self.dgraph = torch.Tensor(dgraph)                                    # [ T, K, K ]
         # parameters
-        self.base   = self.speeds.mean(1) / 3 # + torch.nn.Parameter(torch.Tensor(self.K).uniform_(0, 1)) # [ K ]
+        self.base   = self.speeds.mean(1) / 5 # + torch.nn.Parameter(torch.Tensor(self.K).uniform_(0, 1)) # [ K ]
         self.Beta   = torch.nn.Parameter(torch.Tensor(self.K).uniform_(1, 3)) # [ K ]
 
         # non-zero entries of alpha (spatio dependences)
         self.n_nonzero     = len(np.where(gsupp == 1)[0])
         self.coords        = torch.LongTensor(np.where(gsupp == 1))
         self.Alpha_nonzero = torch.nn.Parameter(torch.randn((self.n_nonzero), requires_grad=True))
-    
+
     def _base(self, _t):
         """
         Background rate at time `t`
@@ -124,25 +123,19 @@ class SpatioTemporalRegressor(torch.nn.Module):
         - pred: a vector of predictions at time t and location k = 0, 1, ..., K [ K ]
         """
         if _t > 0:
-            depth = self.d if _t >= self.d else _t
-            preds = []
-            for tau in range(_t-depth, _t):
-                # getting data at past time tau
-                graph  = self.dgraph[tau, :, :].clone()            # [ K, K ]
-                X_tau  = self.speeds[:, tau].clone()               # [ K ] 
-                # calculate self-exciting effects for each location i
-                A      = graph * self.Alpha
-                kernel = self.__exp_kernel(_t, tau, self.Beta)     # [ K ]
-                pred   = torch.mm(
-                    torch.transpose(A, 0, 1), 
-                    (X_tau * kernel).unsqueeze(1)).squeeze()       # [ K, 1 ]
-                pred   = torch.nn.functional.softplus(pred)        # [ K ]
-                preds.append(pred)
-            preds = torch.stack(preds, 0)
-            preds = preds.sum(0)
+            depth  = self.d if _t >= self.d else _t
+            # self-exciting effect
+            kernel = self.__exp_kernel(self.Beta, _t, depth, self.K)  # [ K, d ]
+            # kernel = self.__gauss_kernel(self.Beta, _t, depth, self.K)  # [ K, d ]
+            Xt     = self.speeds[:, _t-depth:_t].clone()              # [ K, d ]
+            graph  = self.dgraph[_t, :, :].clone()                    # [ K, K ]
+            pred   = torch.mm(
+                torch.transpose(self.Alpha * graph, 0, 1), 
+                Xt * kernel).sum(1)                                   # [ K ]
+            pred   = torch.nn.functional.softplus(pred)               # [ K ]
         else:
-            preds = torch.zeros(self.K)
-        return preds
+            pred   = torch.zeros(self.K)
+        return pred
         
     def _l2_loss(self):
         """
@@ -155,9 +148,8 @@ class SpatioTemporalRegressor(torch.nn.Module):
         - loglik: a vector of log likelihood value at location k = 0, 1, ..., K [ K ]
         - lams:   a list of historical conditional intensity values at time t = tau, ..., t
         """
-        self.Alpha = torch.sparse.FloatTensor(
-            self.coords, self.Alpha_nonzero,
-            torch.Size([self.K, self.K])).to_dense()           # [ K, K ]
+        self.Alpha = torch.sparse.FloatTensor(self.coords, 
+            self.Alpha_nonzero, torch.Size([self.K, self.K])).to_dense()     # [ K, K ]
         # pred values from 0 to T
         pred0 = [ self._base(t) for t in np.arange(self.T) ]   # ( T, [ K ] )
         pred1 = [ self._pred(t) for t in np.arange(self.T) ]   # ( T, [ K ] )
@@ -175,79 +167,38 @@ class SpatioTemporalRegressor(torch.nn.Module):
         return self._l2_loss()
 
     @staticmethod
-    def __exp_kernel(_t, tau, beta):
+    def __exp_kernel(beta, _t, depth, K):
         """
         Args:
         - beta:  decaying rate [ K ]
         - _t:    time index    scalar
         - depth: time depth    scalar
         """
-        return beta * torch.exp(- (_t - tau) * beta)
-        
-
-
-class SpatioTemporalDelayedRegressor(SpatioTemporalRegressor):
-    """
-    PyTorch module for spatio-temporal delayed regressive model for wind power prediction
-    """
-    def __init__(self, speeds, dgraph, gsupp, muG, d=20):
-        """
-        Denote the number of time units as T, the number of locations as K
-        Args:
-        - speeds: wind speed observations [ T, K ]
-        - dgraph: dynamic graph           [ T, K, K ]
-        - gsupp:  graph support           [ K, K ]
-        - muG:    mean of gaussian kernel [ T, K, K ]
-        - d:      memory depth            scalar
-        """
-        SpatioTemporalRegressor.__init__(self, speeds, dgraph, gsupp, d)
-        # mean for Gaussian delayed kernel
-        self.muG = torch.Tensor(muG) # [ T, K, K ]
-        # unregister beta in SpatioTemporalRegressor
-        self.Beta.requires_grad = False
-    
-    def _pred(self, _t):
-        """
-        Wind prediction at time _t for all K locations.
-        Args:
-        - _t:   index of time, e.g., 0, 1, ..., N (integer)
-        Return:
-        - pred: a vector of predictions at time t and location k = 0, 1, ..., K [ K ]
-        """
-        if _t > 0:
-            depth = self.d if _t >= self.d else _t
-            preds = []
-            for tau in range(_t-depth, _t):
-                # getting data at past time tau
-                graph  = self.dgraph[tau, :, :].clone() # [ K, K ]
-                mu     = self.muG[tau, :, :].clone()    # [ K, K ]
-                X_tau  = self.speeds[:, tau].clone()    # [ K ] 
-                # calculate delayed effects for each location i
-                A      = graph * self.Alpha
-                kernel = self.__trunc_gaussian_kernel(_t, tau, mu) # [ K, K ]
-                pred   = torch.mm(
-                    torch.transpose(A * kernel, 0, 1), 
-                    X_tau.unsqueeze(1)).squeeze()                  # [ K, 1 ]
-                pred   = torch.nn.functional.softplus(pred)        # [ K ]
-                preds.append(pred)
-            preds = torch.stack(preds, 0)
-            preds = preds.sum(0)
-        else:
-            preds = torch.zeros(self.K)
-        return preds
+        # current time and the past 
+        t       = torch.ones(depth, dtype=torch.int32) * _t # [ d ]
+        tp      = torch.arange(_t-depth, _t)                # [ d ]
+        delta_t = t - tp                                    # [ d ]
+        delta_t = delta_t.unsqueeze(0).repeat([K, 1])       # [ K, d ]
+        beta    = beta.unsqueeze(1)                         # [ K, 1 ]
+        return beta * torch.exp(- delta_t * beta)
 
     @staticmethod
-    def __trunc_gaussian_kernel(t, tau, mu_mat, sigma=20):
+    def __gauss_kernel(beta, _t, depth, K):
         """
-        Args: 
-        - t:      current time index              scalar
-        - tau:    past time index                 scalar
-        - mu_mat: mean matrix for gaussian kernel [ K, K ]
-        - sigma:  sigma for gaussian kernel
+        Args:
+        - beta:  decaying rate [ K ]
+        - _t:    time index    scalar
+        - depth: time depth    scalar
         """
+        sigma   = 20
+        # current time and the past 
+        t       = torch.ones(depth, dtype=torch.int32) * _t # [ d ]
+        tp      = torch.arange(_t-depth, _t)                # [ d ]
+        delta_t = t - tp                                    # [ d ]
+        delta_t = delta_t.unsqueeze(0).repeat([K, 1])       # [ K, d ]
+        beta    = beta.unsqueeze(1)                         # [ K, 1 ]
         return (1 / (np.sqrt(2 * np.pi) * sigma)) * \
-            torch.exp((-1/2) * torch.square((t - tau - mu_mat)/sigma))
-
+            torch.exp((-1/2) * torch.square((delta_t - beta)/sigma))
 
 
 
@@ -259,8 +210,5 @@ if __name__ == "__main__":
     dgraph, speeds, gsupp, muG, _ = utils.dataloader(N=4)
     
     # training
-    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=20)
-    train(model, niter=1000, lr=1e0, log_interval=2, modelname="in-sample-exp-kernel")
-
-    # model = SpatioTemporalDelayedRegressor(speeds, dgraph, gsupp, muG=muG, d=20)
-    # train(model, niter=1000, lr=5e1, log_interval=2, modelname="in-sample-gauss-kernel")
+    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
+    train(model, niter=1000, lr=1e0, log_interval=2)
