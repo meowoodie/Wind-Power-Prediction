@@ -6,22 +6,17 @@ import random
 import numpy as np
 
 
-def dataloader(
-    dgraphpath="../data/dgraph.npy", 
-    windpath="../data/sample_wind.npy", 
-    gsupppath="../data/gsupp.npy", 
-    locspath="../data/locations.npy", 
-    mugpath="../data/gauss_mean_n4.npy", N=4):
+def dataloader(rootpath="../data", N=4):
     """
     load data matrices and perform basic preprocessing.
     """
     print("[%s] loading data matrices." % arrow.now())
     # load data
-    locs   = np.load(locspath)         # [ K, 2 ]
-    dgraph = np.load(dgraphpath)       # [ T, K, K ]
-    wind   = np.load(windpath)         # [ T, K, 2 ]
-    gsupp  = np.load(gsupppath)        # [ K, K ]
-    muG    = np.load(mugpath)          # [ T/N, K, K ]
+    locs   = np.load("%s/locations.npy" % rootpath)     # [ K, 2 ]
+    dgraph = np.load("%s/dgraph.npy" % rootpath)        # [ T, K, K ]
+    wind   = np.load("%s/sample_wind.npy" % rootpath)   # [ T, K, 2 ]
+    gsupp  = np.load("%s/gsupp.npy" % rootpath)         # [ K, K ]
+    # muG    = np.load("%s/gauss_mean_n4.npy" % rootpath) # [ T/N, K, K ]
     speeds = wind[:, :, 1]             # [ T, K ]
     
     # truncate data to make the number of time units is divisible by N.
@@ -35,18 +30,20 @@ def dataloader(
     avg_speeds = avg(speeds, N=N)          # [ T/N, K ]
     inds       = [ t for t in range(dgraph.shape[0]) if t % N == int(N/2) ]
     avg_dgraph = dgraph[inds, :, :]
-    print("[%s] speeds shape: %s, dgraph shape:%s." % (arrow.now(), speeds.shape, dgraph.shape))
+    print("[%s] raw speeds shape: %s, raw dgraph shape:%s." % (arrow.now(), speeds.shape, dgraph.shape))
     print("[%s] first %d rows of original speeds:" % (arrow.now(), 2*N))
     print("%s" % speeds[:2*N, :])
     print("[%s] first %d rows of averaged speeds:" % (arrow.now(), 2))
     print("%s" % avg_speeds[:2, :])
+    print("[%s] avg speeds shape: %s, avg dgraph shape:%s." % (arrow.now(), avg_speeds.shape, avg_dgraph.shape))
 
     # include diagonal entries
     np.fill_diagonal(gsupp, 1)
     for t in range(dgraph.shape[0]):         
         np.fill_diagonal(dgraph[t], 1)
     
-    return avg_dgraph, avg_speeds, gsupp, muG, locs
+    # return avg_dgraph, avg_speeds, gsupp, muG, locs
+    return avg_dgraph, avg_speeds, gsupp, locs
 
 def avg(mat, N=4):
     """

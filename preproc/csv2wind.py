@@ -45,7 +45,7 @@ def plot_single_wind_graph(t, wind_t, locations, latlim, lnglim, max_speed=15., 
     plt.ylim(latlim)
     plt.xlim(lnglim)
     plt.axis("off")
-    plt.savefig("../results/plot_wind/%s.png" % filename)
+    plt.savefig("../results/plot_wind_k50/%s.png" % filename)
 
 def plot_wind_graphs(wind, locations):
     """
@@ -67,43 +67,48 @@ def plot_wind_graphs(wind, locations):
 
 if __name__ == "__main__":
 
-    # read wind speed
-    with open("../data/sample data/windspeed_1week_data.csv", newline='') as f:
-        speeds      = []
-        speedreader = csv.reader(f, delimiter=',', quotechar='"')
-        for i, row in enumerate(speedreader):
-            if i == 0:
-                locations = [ [ float(latlng) for latlng in locstr.strip('"').split(",") ] for locstr in row[1:] ]
-                locations = np.array(locations)
-            else:
-                speeds.append([ float(speed) for speed in row[1:] ])
-        speeds = np.array(speeds)
+    # # read wind speed
+    # with open("../data/sample data/windspeed_1week_data.csv", newline='') as f:
+    #     speeds      = []
+    #     speedreader = csv.reader(f, delimiter=',', quotechar='"')
+    #     for i, row in enumerate(speedreader):
+    #         if i == 0:
+    #             locations = [ [ float(latlng) for latlng in locstr.strip('"').split(",") ] for locstr in row[1:] ]
+    #             locations = np.array(locations)
+    #         else:
+    #             speeds.append([ float(speed) for speed in row[1:] ])
+    #     speeds = np.array(speeds)
 
-    # read wind direction
-    with open("../data/sample data/winddirection_1week_data.csv", newline='') as f:
-        directions      = []
-        directionreader = csv.reader(f, delimiter=',', quotechar='"')
-        for i, row in enumerate(directionreader):
-            if i == 0:
-                continue
-            else:
-                directions.append([ float(direction) for direction in row ])
-        directions = np.array(directions)
+    # # read wind direction
+    # with open("../data/sample data/winddirection_1week_data.csv", newline='') as f:
+    #     directions      = []
+    #     directionreader = csv.reader(f, delimiter=',', quotechar='"')
+    #     for i, row in enumerate(directionreader):
+    #         if i == 0:
+    #             continue
+    #         else:
+    #             directions.append([ float(direction) for direction in row ])
+    #     directions = np.array(directions)
 
-    wind = np.stack([directions, speeds], axis=-1) # [ n_times, n_locations, n_features=2 ]
+    # wind = np.stack([directions, speeds], axis=-1) # [ n_times, n_locations, n_features=2 ]
+
     # np.save("../data/sample_wind.npy", wind)
     # np.save("../data/locations.npy", locations)
 
+
+    wind      = np.load("../data/sample_wind_k50.npy")
+    locations = np.load("../data/locations_k50.npy")
+
     # plot wind data on maps
-    # plot_wind_graphs(wind, locations)
+    plot_wind_graphs(wind, locations)
     
     # generate gif
     images    = []
-    filenmaes = [ "../results/plot_wind/wind-plot-t%d.png" % t for t in range(wind.shape[0]) ]
+    filenmaes = [ "../results/plot_wind_k50/wind-plot-t%d.png" % t for t in range(wind.shape[0]) ]
     for filename in filenmaes:
         images.append(imageio.imread(filename))
     print("[%s] generating the wind animation" % arrow.now())
-    imageio.mimsave('../results/wind-animation.gif', images)
+    imageio.mimsave('../results/wind-animation-k50.gif', images)
 
 
 

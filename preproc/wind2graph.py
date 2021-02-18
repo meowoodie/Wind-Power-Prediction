@@ -82,7 +82,7 @@ def plot_wind_graph(t, locs, edges, latlim, lnglim, filename):
     plt.xlim(lnglim)
     plt.axis("off")
     fig.tight_layout()
-    plt.savefig("../results/plot_graph/%s-45.png" % filename)
+    plt.savefig("../results/plot_graph_k50/%s-45.png" % filename)
 
 def plot_dynamic_graphs(locs, dgraph):
     """
@@ -142,8 +142,10 @@ def angle2north(loc_j, loc_i):
 
 if __name__ == "__main__":
 
-    wind = np.load("../data/sample_wind.npy") # [ T, K, 2 ]
-    locs = np.load("../data/locations.npy")   # [ K, 2 ]
+    # wind = np.load("../data/sample_wind.npy") # [ T, K, 2 ]
+    # locs = np.load("../data/locations.npy")   # [ K, 2 ]
+    wind = np.load("../data/data_k50/sample_wind.npy") # [ T, K, 2 ]
+    locs = np.load("../data/data_k50/locations.npy")   # [ K, 2 ]
 
     n_locs = locs.shape[0]
     n_time = wind.shape[0]
@@ -160,7 +162,7 @@ if __name__ == "__main__":
     
     # graph support
     supp = k_nearest_graph_support(locs, k=100)
-    np.save("../data/gsupp.npy", supp)
+    np.save("../data/data_k50/gsupp.npy", supp)
 
     # temporal dynamic graph: 
     # at time t, a unique directed graph is decided by the wind directions, 
@@ -169,20 +171,21 @@ if __name__ == "__main__":
     for t in tqdm(range(n_time)):
         for j, i in zip(*np.nonzero(supp)):
             angle = abs(wind[t, j, 0] - rpos[j, i])
-            if angle <= 22.5 or 360 - angle <= 22.5:
+            # if angle <= 22.5 or 360 - angle <= 22.5:
+            if angle <= 30 or 360 - angle <= 30:
                 dgraph[t, j, i] = 1
-    np.save("../data/dgraph.npy", dgraph)
+    np.save("../data/data_k50/dgraph.npy", dgraph)
 
-    # # plot dynamic graphs on the map
+    # plot dynamic graphs on the map
     plot_dynamic_graphs(locs, dgraph)
 
-    # # generate gif
-    # images    = []
-    # filenmaes = [ "../results/plot_graph/graph-plot-%d.png" % t for t in range(550) ]
-    # for filename in filenmaes:
-    #     images.append(imageio.imread(filename))
-    # print("[%s] generating the graph animation" % arrow.now())
-    # imageio.mimsave('../results/graph-animation.gif', images)
+    # generate gif
+    images    = []
+    filenmaes = [ "../results/plot_graph_k50/graph-plot-%d-45.png" % t for t in range(550) ]
+    for filename in filenmaes:
+        images.append(imageio.imread(filename))
+    print("[%s] generating the graph animation" % arrow.now())
+    imageio.mimsave('../results/graph-animation-k50.gif', images)
 
 
             
