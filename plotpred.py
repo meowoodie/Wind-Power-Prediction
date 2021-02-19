@@ -34,7 +34,8 @@ def pred_linechart(pred, true, filename):
         fig, ax = plt.subplots(figsize=(8, 5))
 
         ax.fill_between(x, true, ground, where=true >= ground, facecolor='green', alpha=0.2, interpolate=True, label="Real")
-        ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="In-sample estimation")
+        # ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="In-sample estimation")
+        ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="Out-of-sample prediction")
 
         plt.xlabel(r"Time index")
         plt.ylabel(r"Wind speed (m/s)")
@@ -176,25 +177,10 @@ if __name__ == "__main__":
     torch.manual_seed(12)
 
     # load data matrices
-    dgraph, speeds, gsupp, locs = utils.dataloader(rootpath="../data/data_k50", N=4)
-
-    # load model
-    # model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
-    # # model.load_state_dict(torch.load("saved_models/backup-in-sample-exp-kernel.pt"))
-    # model.load_state_dict(torch.load("saved_models/backup-in-sample-gauss-kernel.pt"))
+    dgraph, speeds, gsupp, locs = utils.dataloader(rootpath="../data/data_k50", N=24)
 
     model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
-    model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-k50.pt"))
-
-
-
-    # # load data matrices
-    # dgraph, speeds, gsupp, locs = utils.dataloader(N=8)
-
-    # model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=20)
-    # model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-n8.pt"))
-
-
+    model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-k50-t24-d10.pt"))
 
     model.eval()
     loss, pred0, pred1 = model() 
@@ -202,14 +188,14 @@ if __name__ == "__main__":
     pred = (pred0 + pred1).detach().numpy().transpose()
     print(pred.shape)
     
-    # plots
-    for i in range(50):
-        pred_linechart(pred[:, i], speeds[:, i], filename="Turbine %d" % i)
-    pred_linechart(pred.mean(1), speeds.mean(1), filename="Average")
+    # # plots
+    # for i in range(50):
+    #     pred_linechart(pred[:, i], speeds[:, i], filename="Turbine %d" % i)
+    # pred_linechart(pred.mean(1), speeds.mean(1), filename="Average")
 
-    # MAE map
-    mae_map(pred, speeds, locs, filename="MAE map")
+    # # MAE map
+    # mae_map(pred, speeds, locs, filename="MAE map")
 
     # MAP heatmap
-    # mae_heatmap(pred, speeds, filename="MAE heatmap")
+    mae_heatmap(pred, speeds, filename="MAE heatmap")
 

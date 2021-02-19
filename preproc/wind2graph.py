@@ -171,8 +171,9 @@ if __name__ == "__main__":
     for t in tqdm(range(n_time)):
         for j, i in zip(*np.nonzero(supp)):
             angle = abs(wind[t, j, 0] - rpos[j, i])
-            # if angle <= 22.5 or 360 - angle <= 22.5:
-            if angle <= 30 or 360 - angle <= 30:
+            # if angle <= 15 or 360 - angle <= 15:
+            if angle <= 22.5 or 360 - angle <= 22.5:
+            # if angle <= 30 or 360 - angle <= 30:
                 dgraph[t, j, i] = 1
     np.save("../data/data_k50/dgraph.npy", dgraph)
 

@@ -280,13 +280,13 @@ if __name__ == "__main__":
     torch.manual_seed(12)
 
     # load data matrices
-    dgraph, speeds, gsupp, _ = utils.dataloader(rootpath="../data/data_k50", N=4)
+    dgraph, speeds, gsupp, _ = utils.dataloader(rootpath="../data/data_k50", N=24)
     
     # training
 
-    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=50)
-    # model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-k50.pt"))
-    train(model, niter=2000, lr=2e0, log_interval=2, modelname="in-sample-exp-kernel-k50")
+    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=10)
+    model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-k50-t24-d10.pt"))
+    train(model, niter=2000, lr=1e-2, log_interval=2, modelname="in-sample-exp-kernel-k50-t24-d10")
 
     # model = SpatioTemporalDelayedRegressor(speeds, dgraph, gsupp, muG=muG, d=50)
     # train(model, niter=1000, lr=1e0, log_interval=2, modelname="in-sample-gauss-kernel-k50")

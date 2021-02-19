@@ -96,8 +96,8 @@ if __name__ == "__main__":
     # np.save("../data/locations.npy", locations)
 
 
-    wind      = np.load("../data/sample_wind_k50.npy")
-    locations = np.load("../data/locations_k50.npy")
+    wind      = np.load("../data/data_k50/sample_wind.npy")
+    locations = np.load("../data/data_k50/locations.npy")
 
     # plot wind data on maps
     plot_wind_graphs(wind, locations)
