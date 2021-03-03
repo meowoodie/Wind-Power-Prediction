@@ -72,9 +72,9 @@ if __name__ == "__main__":
     preds = np.stack(preds, axis=0)
     print(preds.shape)
 
-    # plot
-    for i in range(K):
-        pred_linechart(preds[:, i], speeds[d+1:T, i], filename="Turbine %d" % i)
-    pred_linechart(preds.mean(1), speeds[d+1:T,:].mean(1), filename="Average")
-    mae_map(preds, speeds[d+1:T,:], locs, filename="One-step ahead MAE map")
-    # mae_heatmap(preds, speeds[d+1:T,:], filename="One-step ahead MAE heatmap")
+    # # plot
+    # for i in range(K):
+    #     pred_linechart(preds[:, i], speeds[d+1:T, i], filename="Turbine %d" % i)
+    # pred_linechart(preds.mean(1), speeds[d+1:T,:].mean(1), filename="Average")
+    # mae_map(preds, speeds[d+1:T,:], locs, filename="One-step ahead MAE map")
+    mae_heatmap(preds, speeds[d+1:T,:], filename="One-step ahead MAE heatmap")

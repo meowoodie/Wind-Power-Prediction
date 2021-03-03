@@ -52,7 +52,8 @@ def mae_heatmap(pred, true, filename):
     mae_time  = ae.mean(1)
     loc_order = np.argsort(mae_locs)
     ae        = ae[:, loc_order]
-    mae_locs  = mae_locs[loc_order]
+    rev_loc_order = np.flip(loc_order)
+    mae_locs  = mae_locs[rev_loc_order]
 
     plt.rc('text', usetex=True)
     font = {
@@ -85,7 +86,7 @@ def mae_heatmap(pred, true, filename):
 
     # the absolute error matrix for each location
     cmap = matplotlib.cm.get_cmap('magma')
-    img  = ax_imshow.imshow(ae, cmap=cmap, vmin=0, vmax=5, extent=[0,nt,0,50], aspect=float(nt)/50.)
+    img  = ax_imshow.imshow(ae, cmap=cmap, vmin=0, vmax=ae.max(), extent=[0,nt,0,50], aspect=float(nt)/50.)
     ax_imshow.get_xaxis().set_ticks([])
     ax_imshow.get_yaxis().set_ticks([])
     ax_imshow.set_xlabel("Time")
@@ -114,8 +115,8 @@ def mae_heatmap(pred, true, filename):
     cbaxes.get_yaxis().set_ticks([])
     cbaxes.patch.set_visible(False)
     cbar = fig.colorbar(img, cax=cbaxes)
-    cbar.set_ticks([0, 5])
-    cbar.set_ticklabels([0, 5])
+    cbar.set_ticks([0, ae.max()])
+    cbar.set_ticklabels([0, ae.max()])
     cbar.ax.set_ylabel('AE', rotation=270, labelpad=-1)
 
     fig.tight_layout()
