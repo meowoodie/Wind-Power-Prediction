@@ -279,14 +279,26 @@ if __name__ == "__main__":
     
     torch.manual_seed(12)
 
+    N = 4
+    d = 10
+
     # load data matrices
-    dgraph, speeds, gsupp, _ = utils.dataloader(rootpath="../data/data_k50", N=24)
+    dgraph, speeds, gsupp, locs = utils.dataloader(rootpath="../data/data_k50", N=N)
+    T, K  = speeds.shape
     
     # training
+    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=d)
+    # train(model, niter=5000, lr=1e-2, log_interval=500, modelname="in-sample-exp-kernel-k50-t%d-d%d" % (N, d))
+    model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-k50-t%d-d%d.pt" % (N, d)))
 
-    model = SpatioTemporalRegressor(speeds, dgraph, gsupp, d=10)
-    model.load_state_dict(torch.load("saved_models/in-sample-exp-kernel-k50-t24-d10.pt"))
-    train(model, niter=2000, lr=1e-2, log_interval=2, modelname="in-sample-exp-kernel-k50-t24-d10")
+    # visualization
+    from plotpred import pred_linechart, mae_map, mae_heatmap
+    
+    _, pred0, pred1 = model()
+    preds = (pred0 + pred1).detach().numpy().transpose()
 
-    # model = SpatioTemporalDelayedRegressor(speeds, dgraph, gsupp, muG=muG, d=50)
-    # train(model, niter=1000, lr=1e0, log_interval=2, modelname="in-sample-gauss-kernel-k50")
+    # for i in range(K):
+    #     pred_linechart(preds[:, i], speeds[:, i], filename="Turbine %d" % i)
+    # pred_linechart(preds.mean(1), speeds.mean(1), filename="Average")
+    mae_heatmap(preds, speeds, filename="in-sample MAE heatmap")
+    # mae_map(preds, speeds, locs, filename="insample MAE map")

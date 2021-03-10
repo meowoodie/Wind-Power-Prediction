@@ -30,12 +30,13 @@ def pred_linechart(pred, true, filename):
     x      = np.arange(len(pred))
     ground = np.zeros(len(pred))
 
-    with PdfPages("../results/result_lineplots/%s.pdf" % filename) as pdf:
+    # with PdfPages("../results/result_lineplots/%s.pdf" % filename) as pdf:
+    with PdfPages("../results/result_insample/%s.pdf" % filename) as pdf:
         fig, ax = plt.subplots(figsize=(8, 5))
 
         ax.fill_between(x, true, ground, where=true >= ground, facecolor='green', alpha=0.2, interpolate=True, label="Real")
-        # ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="In-sample estimation")
-        ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="Out-of-sample prediction")
+        ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="In-sample estimation")
+        # ax.plot(x, pred, linewidth=3, color="green", alpha=1, label="Out-of-sample prediction")
 
         plt.xlabel(r"Time index")
         plt.ylabel(r"Wind speed (m/s)")
@@ -116,7 +117,7 @@ def mae_heatmap(pred, true, filename):
     cbaxes.patch.set_visible(False)
     cbar = fig.colorbar(img, cax=cbaxes)
     cbar.set_ticks([0, ae.max()])
-    cbar.set_ticklabels([0, ae.max()])
+    cbar.set_ticklabels(["0", "%.3f" % ae.max()])
     cbar.ax.set_ylabel('AE', rotation=270, labelpad=-1)
 
     fig.tight_layout()

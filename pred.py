@@ -50,23 +50,30 @@ if __name__ == "__main__":
     torch.manual_seed(12)
 
     # load data matrices
-    dgraph, speeds, gsupp, locs = utils.dataloader(rootpath="../data/data_k50", N=24)
-    d    = 10
-    T, K = speeds.shape
+    N     = 4
+    d     = 10
+    wsize = 50
+
+    dgraph, speeds, gsupp, locs = utils.dataloader(rootpath="../data/data_k50", N=N)
+    T, K  = speeds.shape
 
     # # training
-    # for t in range(d, T-1):
-    #     _dgraph, _speeds = dgraph[:t, :, :], speeds[:t, :]
+    # # for t in range(d, T-1):
+    # for t in range(wsize, T-1):
+    #     _dgraph, _speeds = dgraph[t-wsize:t, :, :], speeds[t-wsize:t, :]
     #     model = SpatioTemporalRegressor(_speeds, _dgraph, gsupp, d=d)
-    #     model.load_state_dict(torch.load("saved_models/out-of-sample-[i=%d]-exp-kernel-k50-t24-d10.pt" % t))
-    #     train(model, niter=2000, lr=1e-2, log_interval=500, modelname="out-of-sample-[i=%d]-exp-kernel-k50-t24-d10" % t)
+    #     if t > wsize:
+    #         model.load_state_dict(torch.load("saved_models/out-of-sample-[i=%d]-exp-kernel-k50-t%d-d%d.pt" % (t - 1, N, d)))
+    #         print("[%s] Model at t = %d has been loaded as initialization" % (arrow.now(), (t - 1)))
+    #     train(model, niter=5000, lr=1e-2, log_interval=500, modelname="out-of-sample-[i=%d]-exp-kernel-k50-t%d-d%d" % (t, N, d))
     
     # evaluation
     preds = []
-    for t in range(d, T-1):
-        _dgraph, _speeds = dgraph[:t, :, :], speeds[:t, :]
+    # for t in range(d, T-1):
+    for t in range(wsize, 168):
+        _dgraph, _speeds = dgraph[t-wsize:t, :, :], speeds[t-wsize:t, :]
         model = SpatioTemporalRegressivePredictor(_speeds, _dgraph, gsupp, d=d)
-        model.load_state_dict(torch.load("saved_models/out-of-sample-[i=%d]-exp-kernel-k50-t24-d10.pt" % t))
+        model.load_state_dict(torch.load("saved_models/out-of-sample-[i=%d]-exp-kernel-k50-t%d-d%d.pt" % (t, N, d)))
         pred  = model().detach().numpy()
         preds.append(pred)
     preds = np.stack(preds, axis=0)
@@ -74,7 +81,7 @@ if __name__ == "__main__":
 
     # # plot
     # for i in range(K):
-    #     pred_linechart(preds[:, i], speeds[d+1:T, i], filename="Turbine %d" % i)
-    # pred_linechart(preds.mean(1), speeds[d+1:T,:].mean(1), filename="Average")
-    # mae_map(preds, speeds[d+1:T,:], locs, filename="One-step ahead MAE map")
-    mae_heatmap(preds, speeds[d+1:T,:], filename="One-step ahead MAE heatmap")
+    #     pred_linechart(preds[:, i], speeds[wsize+1:T, i], filename="Turbine %d" % i)
+    # pred_linechart(preds.mean(1), speeds[wsize+1:T,:].mean(1), filename="Average")
+    # mae_map(preds, speeds[wsize+1:169,:], locs, filename="out-of-sample MAE map")
+    mae_heatmap(preds, speeds[wsize+1:169,:], filename="out-of-sample MAE heatmap")
