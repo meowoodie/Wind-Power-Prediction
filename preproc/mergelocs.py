@@ -163,22 +163,22 @@ def merge_wind_data(labels, wind, locs, merged_locs):
 
 if __name__ == "__main__":
 
-    wind = np.load("../data/sample_wind.npy") # [ T, K, 2 ]
-    locs = np.load("../data/locations.npy")   # [ K, 2 ]
+    wind = np.load("../data/rawdata/sample_wind.npy") # [ T, K, 2 ]
+    locs = np.load("../data/rawdata/locations.npy")   # [ K, 2 ]
 
-    n_clusters = 300
+    n_clusters = 40
     kmeans     = KMeans(n_clusters=n_clusters, random_state=0).fit(locs)
     labels     = kmeans.labels_
     upd_locs   = kmeans.cluster_centers_
     upd_wind   = merge_wind_data(labels, wind, locs, upd_locs)
     
-    np.save("../data/locations_k%d.npy" % n_clusters, upd_locs)
-    np.save("../data/sample_wind_k%d.npy" % n_clusters, upd_wind)
+    np.save("../data/data_k%d/locations.npy" % n_clusters, upd_locs)
+    np.save("../data/data_k%d/sample_wind.npy" % n_clusters, upd_wind)
 
-    # plot_merged_locs(labels, locs, upd_locs, filename="merged_locations_k%d" % n_clusters) 
-    # plot_merged_mae(labels, locs, wind[:, :, 1], upd_wind[:, :, 1], 
-    #     vmax=0.4, vmin=0.,   
-    #     filename="merged_speed_mae_k%d" % n_clusters, titlename="Wind speed", is_pct=True)
-    # plot_merged_mae(labels, locs, wind[:, :, 0], upd_wind[:, :, 0], 
-    #     vmax=40, vmin=0.,
-    #     filename="merged_direction_mae_k%d" % n_clusters, titlename="Wind direction")
+    plot_merged_locs(labels, locs, upd_locs, filename="merged_locations_k%d" % n_clusters) 
+    plot_merged_mae(labels, locs, wind[:, :, 1], upd_wind[:, :, 1], 
+        vmax=0.4, vmin=0.,   
+        filename="merged_speed_mae_k%d" % n_clusters, titlename="Wind speed", is_pct=True)
+    plot_merged_mae(labels, locs, wind[:, :, 0], upd_wind[:, :, 0], 
+        vmax=40, vmin=0.,
+        filename="merged_direction_mae_k%d" % n_clusters, titlename="Wind direction")

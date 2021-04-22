@@ -69,19 +69,18 @@ if __name__ == "__main__":
     
     # evaluation
     preds = []
-    # for t in range(d, T-1):
-    for t in range(wsize, 168):
+    for t in range(wsize, 121):
         _dgraph, _speeds = dgraph[t-wsize:t, :, :], speeds[t-wsize:t, :]
         model = SpatioTemporalRegressivePredictor(_speeds, _dgraph, gsupp, d=d)
-        model.load_state_dict(torch.load("saved_models/out-of-sample-[i=%d]-exp-kernel-k50-t%d-d%d.pt" % (t, N, d)))
+        model.load_state_dict(torch.load("saved_models/drive-download-20210312T204020Z-001/out-of-sample-[i=%d]-exp-kernel-penalized-k50-t%d-d%d.pt" % (t, N, d)))
         pred  = model().detach().numpy()
         preds.append(pred)
     preds = np.stack(preds, axis=0)
     print(preds.shape)
 
-    # # plot
+    # plot
     # for i in range(K):
-    #     pred_linechart(preds[:, i], speeds[wsize+1:T, i], filename="Turbine %d" % i)
-    # pred_linechart(preds.mean(1), speeds[wsize+1:T,:].mean(1), filename="Average")
-    # mae_map(preds, speeds[wsize+1:169,:], locs, filename="out-of-sample MAE map")
-    mae_heatmap(preds, speeds[wsize+1:169,:], filename="out-of-sample MAE heatmap")
+    #     pred_linechart(preds[:, i], speeds[wsize+1:122, i], filename="Turbine %d" % i)
+    # pred_linechart(preds.mean(1), speeds[wsize+1:122,:].mean(1), filename="Average")
+    # mae_map(preds, speeds[wsize+1:122,:], locs, filename="out-of-sample MAE map")
+    mae_heatmap(preds, speeds[wsize+1:122,:], filename="out-of-sample MAE heatmap")

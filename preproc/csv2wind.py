@@ -9,6 +9,9 @@ import csv
 import arrow
 import imageio
 import numpy as np
+import cartopy.crs as ccrs
+import cartopy.io.img_tiles as cimgt
+import matplotlib
 import matplotlib.pyplot as plt
 
 def plot_single_wind_graph(t, wind_t, locations, latlim, lnglim, max_speed=15., arrow_length=1., filename="wind-plot"):
@@ -21,31 +24,47 @@ def plot_single_wind_graph(t, wind_t, locations, latlim, lnglim, max_speed=15., 
     direction_t, speed_t = wind_t[:, 0], wind_t[:, 1]
     lats, lngs           = locations[:, 0], locations[:, 1]
     
-    plt.rc('text', usetex=True)
-    fig, ax = plt.subplots(1, 1)
-    ax.scatter(lngs, lats, s=10, c="red")
+    latlow, latup = lats.min(), lats.max()
+    lnglow, lngup = lngs.min(), lngs.max()
+    width, height = lngup - lnglow, latup - latlow
+    latlow, latup = latlow - height * 0.1, latup + height * 0.1
+    lnglow, lngup = lnglow - width * 0.1, lngup + width * 0.1
+    heightwidthratio = float(height / width)
 
-    # # DEBUG
-    # i = 0
-    # dir_t = direction_t[i] / 180 * np.pi
-    # spd_t = 100
-    # ax.text(lngs[i], lats[i], direction_t[i], fontsize=10)
-    # y     = [ lats[i], lats[i] + np.cos(dir_t) * 5 ]
-    # x     = [ lngs[i], lngs[i] + np.sin(dir_t) * 5 ]
-    # ax.plot(x, y, linewidth=2., c="blue", alpha=spd_t / max_speed)
+    plt.rc('text', usetex=True)
+    font = {
+        'family' : 'serif',
+        'weight' : 'bold',
+        'size'   : 20}
+    plt.rc('font', **font)
+
+    # Create a Stamen terrain background instance.
+    stamen_terrain = cimgt.Stamen('terrain-background')
+
+    fig = plt.figure(figsize=(10, heightwidthratio * 10))
+
+    # Create a GeoAxes in the tile's projection.
+    ax  = fig.add_subplot(1, 1, 1, projection=stamen_terrain.crs)
+
+    # Limit the extent of the map to a small longitude/latitude range.
+    ax.set_extent([lnglow, lngup, latlow, latup], crs=ccrs.Geodetic())
+    
+    # Add the Stamen data at zoom level 8.
+    ax.add_image(stamen_terrain, 8)
+
+    # colorbar
+    cm = plt.cm.get_cmap('gist_ncar')
+
+    ax.scatter(lngs, lats, s=10, c="red", transform=ccrs.PlateCarree())
 
     for i in range(locations.shape[0]):
         dir_t = direction_t[i] / 180 * np.pi
         spd_t = speed_t[i]
         y     = [ lats[i], lats[i] + np.cos(dir_t) * arrow_length ]
         x     = [ lngs[i], lngs[i] + np.sin(dir_t) * arrow_length ]
-        ax.plot(x, y, linewidth=2., c="blue", alpha=spd_t / max_speed)
+        ax.plot(x, y, linewidth=2., c="blue", alpha=spd_t / max_speed, transform=ccrs.PlateCarree())
 
-    plt.title("$t=%d$" % t)
-    plt.ylim(latlim)
-    plt.xlim(lnglim)
-    plt.axis("off")
-    plt.savefig("../results/plot_wind_k50/%s.png" % filename)
+    plt.savefig("../results/plot_wind/%s.pdf" % filename)
 
 def plot_wind_graphs(wind, locations):
     """
@@ -96,19 +115,19 @@ if __name__ == "__main__":
     # np.save("../data/locations.npy", locations)
 
 
-    wind      = np.load("../data/data_k50/sample_wind.npy")
-    locations = np.load("../data/data_k50/locations.npy")
+    wind      = np.load("../data/rawdata/sample_wind.npy")
+    locations = np.load("../data/rawdata/locations.npy")
 
     # plot wind data on maps
     plot_wind_graphs(wind, locations)
     
     # generate gif
-    images    = []
-    filenmaes = [ "../results/plot_wind_k50/wind-plot-t%d.png" % t for t in range(wind.shape[0]) ]
-    for filename in filenmaes:
-        images.append(imageio.imread(filename))
-    print("[%s] generating the wind animation" % arrow.now())
-    imageio.mimsave('../results/wind-animation-k50.gif', images)
+    # images    = []
+    # filenmaes = [ "../results/plot_wind/wind-plot-t%d.png" % t for t in range(wind.shape[0]) ]
+    # for filename in filenmaes:
+    #     images.append(imageio.imread(filename))
+    # print("[%s] generating the wind animation" % arrow.now())
+    # imageio.mimsave('../results/wind-animation-k50.gif', images)
 
 
 
